@@ -20,7 +20,7 @@
 		},
 
 		readJsonDC1: function() {
-			fs.readFile(__dirname + '/simploniens.json', 'utf8', function(err, data){
+			fs.readFile(__dirname + '/data/simploniens.json', 'utf8', function(err, data){
 				if (err) {
 					throw err;
 				}
