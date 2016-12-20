@@ -1,2 +1,5 @@
 /data/*.json
 config.js
+/node_modules/
+public/simploniens.json
+public/simploniensGeo.geojson
