@@ -41,7 +41,7 @@ function next(result, table){
 	curseur ++;
 	if(curseur === table.length){
 		var fileJson = createJson(table);
-		ecritureJson(fileJson, __dirname + '/public/simploniens.json');
+		ecritureJson(fileJson, __dirname + '/data/simploniens.json');
 	}
 }
 
