@@ -15,6 +15,8 @@
 
 		counterMax: null,
 
+		memory: [],
+
 		init: function() {
 			app.readJsonDC1();
 		},
@@ -32,14 +34,12 @@
 		createFeatures: function() {
 			var len = app.dataSimplon.simploniens.length;
 			for (var i = 0; i < len; i++) {
-
 				var feature = {
 					type: "Feature",
 					geometry: { type: "Point", coordinates: [] },
 					properties: app.dataSimplon.simploniens[i]
 				}
 				app.objectGeojson.features.push(feature)
-				
 			}
 			app.setInitialCounterMax();
 		},
@@ -49,7 +49,7 @@
 			console.log("max = " + app.counterMax);
 			app.deleteEmails();
 			app.deleteTelephones();
-			app.getPostCode();
+			app.readPostCodeMemory();
 		},
 
 		deleteEmails: function() {
@@ -64,9 +64,41 @@
 			})
 		},
 
-		getPostCode: function() {
+		readPostCodeMemory: function() {
+			fs.readFile(__dirname + '/postcodesList.json', 'utf8', function(err, data) {
+				if (err) {
+					throw err;
+				}
+				app.memory = JSON.parse(data);
+			})
+			app.checkPostCodeMemory();
+		},
+
+		checkPostCodeMemory: function() {
 			var current = app.objectGeojson.features[app.counter];
-			app.lookForCoord()
+			var codePostal = current.properties.codePostal;
+			var coordinates;
+			var len = app.memory.length;
+			for (var i = 0; i < len; i++) {
+				if (codePostal === app.memory[i].postCode) {
+					coordinates = app.memory[i].coordinates;
+				}
+			};
+			app.resultPostCodeInArray(coordinates);
+		},
+
+		resultPostCodeInArray: function(coord) {
+			var current = app.objectGeojson.features[app.counter];
+			if (coord) {
+				console.log("les mêmes = " + coord);
+				current.geometry.coordinates = coord;
+				app.counter++;
+				var dontWait = true;
+				app.nextFeatureOrStop(dontWait);
+			} else {
+				console.log("pas les mêmes = " + coord);
+				app.lookForCoord()
+			}
 		},
 
 		lookForCoord: function() {
@@ -97,8 +129,19 @@
 			var lat = response.data[0].lat;
 			var lon = response.data[0].lon;
 			var coordinates = [lon, lat];
+			var codePostal = current.properties.codePostal;
 			current.geometry.coordinates = coordinates;
 			app.counter++;
+			app.addToMemory(codePostal, coordinates);
+		},
+
+		addToMemory: function(code, coord) {
+			console.log("add to memory");
+			var memoryObject = {
+				postCode: code,
+				coordinates: coord
+			}
+			app.memory.push(memoryObject)
 			app.nextFeatureOrStop();
 		},
 		
@@ -120,18 +163,31 @@
 			app.nextFeatureOrStop();
 		},
 
-		nextFeatureOrStop: function() {
+		nextFeatureOrStop: function(dontWait) {
 			if (app.counter === app.counterMax) {
+				app.saveMemoryInJson();
 				app.sendJson();
+			} else if (dontWait) {
+				console.log(app.counter);
+				console.log("restart");
+				app.checkPostCodeMemory();
 			} else {
 				console.log(app.counter);
 				console.log("restart");
-				setTimeout(app.getPostCode, 1200);	
+				setTimeout(app.checkPostCodeMemory, 1200);	
 			}
+		},
+
+		saveMemoryInJson: function() {
+			var stringMemory = JSON.stringify(app.memory);
+			fs.writeFile('./postcodesList.json', stringMemory, 'utf8', function(err) {
+				if(err) {
+					console.log(err);
+				}
+			})
 		},
 		
 		sendJson: function() {
-			//res.json(app.objectGeojson);
 			console.log("stop");
 			var stringGeojson = JSON.stringify(app.objectGeojson);
 			fs.writeFile('public/simploniensGeo.geojson', stringGeojson, 'utf8', function(err) {
